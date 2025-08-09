@@ -1,6 +1,6 @@
 import React, { useState, useEffect, createContext, useContext, useRef } from 'react';
 import { initializeApp } from 'firebase/app';
-import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from 'firebase/auth';
+import { getAuth, signInAnonymously, onAuthStateChanged } from 'firebase/auth'; // Removed signInWithCustomToken
 import {
   getFirestore, doc, setDoc, updateDoc, onSnapshot, runTransaction, arrayUnion
 } from 'firebase/firestore';
@@ -10,83 +10,92 @@ import {
 const FirebaseContext = createContext(null);
 
 /**
- * FirebaseProvider component
- * Initializes Firebase, authenticates the user, and provides the Firebase instances
- * and user ID to its children via context.
- *
- * IMPORTANT: For GitHub Pages, you must replace 'YOUR_FIREBASE_CONFIG_OBJECT_HERE'
- * with your actual Firebase project's configuration object.
- * Example:
- * const firebaseConfig = {
- * apiKey: "AIza...",
- * authDomain: "your-project.firebaseapp.com",
- * projectId: "your-project-id",
- * storageBucket: "your-project.appspot.com",
- * messagingSenderId: "...",
- * appId: "...",
- * measurementId: "G-..."
- * };
- */
+// Import the functions you need from the SDKs you need
+import { initializeApp } from "firebase/app";
+import { getAnalytics } from "firebase/analytics";
+// TODO: Add SDKs for Firebase products that you want to use
+// https://firebase.google.com/docs/web/setup#available-libraries
+
+// Your web app's Firebase configuration
+// For Firebase JS SDK v7.20.0 and later, measurementId is optional
+const firebaseConfig = {
+  apiKey: "AIzaSyCK7wNoSjOCR1wajg0fuym4__3oOuSPS-Q",
+  authDomain: "study-game-8522a.firebaseapp.com",
+  projectId: "study-game-8522a",
+  storageBucket: "study-game-8522a.firebasestorage.app",
+  messagingSenderId: "917966145384",
+  appId: "1:917966145384:web:06f7ec00f71b20f75638dd",
+  measurementId: "G-X4GQB95DYH"
+};
+
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
+const analytics = getAnalytics(app);
 function FirebaseProvider({ children }) {
   const [db, setDb] = useState(null);
   const [auth, setAuth] = useState(null);
   const [userId, setUserId] = useState(null);
   const [isAuthReady, setIsAuthReady] = useState(false);
 
-  // Define your Firebase Config directly here for GitHub Pages deployment
-  const firebaseConfig = YOUR_FIREBASE_CONFIG_OBJECT_HERE || {
-    // THIS IS A PLACEHOLDER. REPLACE WITH YOUR ACTUAL FIREBASE CONFIG.
-    // Follow the instructions below on how to get this object from your Firebase project.
-    apiKey: "YOUR_API_KEY",
-    authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
-    projectId: "YOUR_PROJECT_ID",
-    storageBucket: "YOUR_PROJECT_ID.appspot.com",
-    messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-    appId: "YOUR_APP_ID"
+  // REPLACE THIS ENTIRE firebaseConfig OBJECT WITH YOUR ACTUAL FIREBASE CONFIG
+  const firebaseConfig = {
+    apiKey: "YOUR_API_KEY", // Example: "AIzaSyC0s-..."
+    authDomain: "YOUR_PROJECT_ID.firebaseapp.com", // Example: "my-study-game-123.firebaseapp.com"
+    projectId: "YOUR_PROJECT_ID", // Example: "my-study-game-123"
+    storageBucket: "YOUR_PROJECT_ID.appspot.com", // Example: "my-study-game-123.appspot.com"
+    messagingSenderId: "YOUR_MESSAGING_SENDER_ID", // Example: "1234567890"
+    appId: "YOUR_APP_ID" // Example: "1:234567890:web:abcdef123456"
   };
 
-
   useEffect(() => {
-    // Check if firebaseConfig is actually provided and not the placeholder
+    // Check if firebaseConfig is still the placeholder. If so, warn and do not initialize Firebase.
     if (!firebaseConfig.projectId || firebaseConfig.projectId === "YOUR_PROJECT_ID") {
-      console.error("Firebase configuration is missing or incomplete. Please update firebaseConfig in FirebaseProvider.");
-      // Render an error message or loading state indefinitely if config is bad
+      console.error("Firebase configuration is missing or incomplete. Multiplayer features will NOT work.");
+      // Keep isAuthReady false to show a clear message to the user.
+      setIsAuthReady(false);
       return;
     }
 
-    // Initialize Firebase app if not already initialized
-    const app = initializeApp(firebaseConfig);
-    const firestore = getFirestore(app);
-    const firebaseAuth = getAuth(app);
+    try {
+      // Initialize Firebase app
+      const app = initializeApp(firebaseConfig);
+      const firestore = getFirestore(app);
+      const firebaseAuth = getAuth(app);
 
-    setDb(firestore);
-    setAuth(firebaseAuth);
+      setDb(firestore);
+      setAuth(firebaseAuth);
 
-    // Listen for authentication state changes
-    const unsubscribe = onAuthStateChanged(firebaseAuth, async (user) => {
-      if (user) {
-        // User is signed in.
-        setUserId(user.uid);
-      } else {
-        // User is signed out, or not yet signed in. Sign in anonymously.
-        try {
+      // Sign in anonymously and listen for auth state changes
+      const unsubscribe = onAuthStateChanged(firebaseAuth, async (user) => {
+        if (user) {
+          setUserId(user.uid);
+        } else {
+          // If no user, try to sign in anonymously
           await signInAnonymously(firebaseAuth);
-        } catch (error) {
-          console.error("Firebase Anonymous Auth Error:", error);
         }
-      }
-      setIsAuthReady(true); // Auth state is ready
-    });
+        setIsAuthReady(true); // Auth state check complete
+      });
 
-    // Cleanup subscription on unmount
-    return () => unsubscribe();
-  }, [JSON.stringify(firebaseConfig)]); // Re-run if firebaseConfig changes (though it shouldn't once set)
+      // Cleanup subscription on unmount
+      return () => unsubscribe();
+    } catch (error) {
+      console.error("Failed to initialize Firebase:", error);
+      // Set an error message if initialization fails
+      setIsAuthReady(false);
+      // Optionally, set a visible message to the user if firebase init fails entirely
+    }
+  }, [JSON.stringify(firebaseConfig)]); // Re-run effect if the config somehow changes
 
-  // Only render children when authentication is ready
+  // Display a loading state or an error if Firebase isn't ready or configured
   if (!isAuthReady) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-pink-100">
-        <p className="text-pink-700 text-lg">🌸 Initializing Game... 🎀</p>
+        <p className="text-pink-700 text-lg text-center p-4">
+          {(!firebaseConfig.projectId || firebaseConfig.projectId === "YOUR_PROJECT_ID")
+            ? "🛑 Multiplayer features offline: Please update Firebase config in App.js. Follow setup instructions!"
+            : "🌸 Initializing Game... 🎀"
+          }
+        </p>
       </div>
     );
   }
@@ -99,140 +108,32 @@ function FirebaseProvider({ children }) {
 }
 
 // --- Theme Context and Definitions ---
-// This context will provide the active theme to all components.
 const ThemeContext = createContext(null);
 
-// Character themes with Tailwind CSS classes
 const CHARACTER_THEMES = {
   Kazhe: {
-    name: 'Kazhe',
-    primaryBg: 'bg-pink-100', // Light background
-    secondaryBg: 'bg-pink-200', // Card/inner background
-    accentBg: 'bg-pink-500', // Button/strong elements
-    accentHover: 'hover:bg-pink-600',
-    textColor: 'text-pink-700', // Primary text
-    accentText: 'text-pink-800', // Stronger text
-    borderColor: 'border-pink-300', // Border
-    buttonBgSecondary: 'bg-purple-500', // Generic action button
-    buttonHoverSecondary: 'hover:bg-purple-600',
-    buttonBgPrimary: 'bg-pink-500', // Generic action button
-    buttonHoverPrimary: 'hover:bg-pink-600',
-    winnerColor: 'text-purple-700', // Winner text color
-    titleColor: 'text-pink-700',
-    headerBg: 'bg-pink-50',
-    subTitleColor: 'text-purple-600',
-    textMain: 'text-pink-600',
-    inputBorder: 'border-pink-300',
-    inputBg: 'bg-pink-50',
-    inputFocusBorder: 'focus:border-pink-500',
-    inputFocusRing: 'focus:ring-pink-200',
-    placeholderColor: 'placeholder-pink-400',
-    messageSuccessBg: 'bg-blue-300',
-    messageSuccessText: 'text-blue-800',
-    messageErrorBg: 'bg-red-300',
-    messageErrorText: 'text-red-800',
+    name: 'Kazhe', primaryBg: 'bg-pink-100', secondaryBg: 'bg-pink-200', accentBg: 'bg-pink-500', accentHover: 'hover:bg-pink-600', textColor: 'text-pink-700', accentText: 'text-pink-800', borderColor: 'border-pink-300', buttonBgSecondary: 'bg-purple-500', buttonHoverSecondary: 'hover:bg-purple-600', buttonBgPrimary: 'bg-pink-500', buttonHoverPrimary: 'hover:bg-pink-600', winnerColor: 'text-purple-700', titleColor: 'text-pink-700', headerBg: 'bg-pink-50', subTitleColor: 'text-purple-600', textMain: 'text-pink-600', inputBorder: 'border-pink-300', inputBg: 'bg-pink-50', inputFocusBorder: 'focus:border-pink-500', inputFocusRing: 'focus:ring-pink-200', placeholderColor: 'placeholder-pink-400', messageSuccessBg: 'bg-blue-300', messageSuccessText: 'text-blue-800', messageErrorBg: 'bg-red-300', messageErrorText: 'text-red-800',
   },
   Ameen: {
-    name: 'Ameen',
-    primaryBg: 'bg-red-100',
-    secondaryBg: 'bg-red-200',
-    accentBg: 'bg-red-500',
-    accentHover: 'hover:bg-red-600',
-    textColor: 'text-red-700',
-    accentText: 'text-red-800',
-    borderColor: 'border-red-300',
-    buttonBgSecondary: 'bg-purple-600',
-    buttonHoverSecondary: 'hover:bg-purple-700',
-    buttonBgPrimary: 'bg-red-500',
-    buttonHoverPrimary: 'hover:bg-red-600',
-    winnerColor: 'text-purple-800',
-    titleColor: 'text-red-700',
-    headerBg: 'bg-red-50',
-    subTitleColor: 'text-purple-700',
-    textMain: 'text-red-600',
-    inputBorder: 'border-red-300',
-    inputBg: 'bg-red-50',
-    inputFocusBorder: 'focus:border-red-500',
-    inputFocusRing: 'focus:ring-red-200',
-    placeholderColor: 'placeholder-red-400',
-    messageSuccessBg: 'bg-blue-300',
-    messageSuccessText: 'text-blue-800',
-    messageErrorBg: 'bg-red-300',
-    messageErrorText: 'text-red-800',
+    name: 'Ameen', primaryBg: 'bg-red-100', secondaryBg: 'bg-red-200', accentBg: 'bg-red-500', accentHover: 'hover:bg-red-600', textColor: 'text-red-700', accentText: 'text-red-800', borderColor: 'border-red-300', buttonBgSecondary: 'bg-purple-600', buttonHoverSecondary: 'hover:bg-purple-700', buttonBgPrimary: 'bg-red-500', buttonHoverPrimary: 'hover:bg-red-600', winnerColor: 'text-purple-800', titleColor: 'text-red-700', headerBg: 'bg-red-50', subTitleColor: 'text-purple-700', textMain: 'text-red-600', inputBorder: 'border-red-300', inputBg: 'bg-red-50', inputFocusBorder: 'focus:border-red-500', inputFocusRing: 'focus:ring-red-200', placeholderColor: 'placeholder-red-400', messageSuccessBg: 'bg-blue-300', messageSuccessText: 'text-blue-800', messageErrorBg: 'bg-red-300', messageErrorText: 'text-red-800',
   },
   Laja: {
-    name: 'Laja',
-    primaryBg: 'bg-emerald-100', // Sage green
-    secondaryBg: 'bg-emerald-200',
-    accentBg: 'bg-emerald-500',
-    accentHover: 'hover:bg-emerald-600',
-    textColor: 'text-emerald-700',
-    accentText: 'text-emerald-800',
-    borderColor: 'border-emerald-300',
-    buttonBgSecondary: 'bg-purple-500',
-    buttonHoverSecondary: 'hover:bg-purple-600',
-    buttonBgPrimary: 'bg-emerald-500',
-    buttonHoverPrimary: 'hover:bg-emerald-600',
-    winnerColor: 'text-purple-700',
-    titleColor: 'text-emerald-700',
-    headerBg: 'bg-emerald-50',
-    subTitleColor: 'text-purple-600',
-    textMain: 'text-emerald-600',
-    inputBorder: 'border-emerald-300',
-    inputBg: 'bg-emerald-50',
-    inputFocusBorder: 'focus:border-emerald-500',
-    inputFocusRing: 'focus:ring-emerald-200',
-    placeholderColor: 'placeholder-emerald-400',
-    messageSuccessBg: 'bg-blue-300',
-    messageSuccessText: 'text-blue-800',
-    messageErrorBg: 'bg-red-300',
-    messageErrorText: 'text-red-800',
+    name: 'Laja', primaryBg: 'bg-emerald-100', secondaryBg: 'bg-emerald-200', accentBg: 'bg-emerald-500', accentHover: 'hover:bg-emerald-600', textColor: 'text-emerald-700', accentText: 'text-emerald-800', borderColor: 'border-emerald-300', buttonBgSecondary: 'bg-purple-500', buttonHoverSecondary: 'hover:bg-purple-600', buttonBgPrimary: 'bg-emerald-500', buttonHoverPrimary: 'hover:bg-emerald-600', winnerColor: 'text-purple-700', titleColor: 'text-emerald-700', headerBg: 'bg-emerald-50', subTitleColor: 'text-purple-600', textMain: 'text-emerald-600', inputBorder: 'border-emerald-300', inputBg: 'bg-emerald-50', inputFocusBorder: 'focus:border-emerald-500', inputFocusRing: 'focus:ring-emerald-200', placeholderColor: 'placeholder-emerald-400', messageSuccessBg: 'bg-blue-300', messageSuccessText: 'text-blue-800', messageErrorBg: 'bg-red-300', messageErrorText: 'text-red-800',
   },
   Chanel: {
-    name: 'Chanel',
-    primaryBg: 'bg-blue-100', // Deep blue
-    secondaryBg: 'bg-blue-200',
-    accentBg: 'bg-blue-600',
-    accentHover: 'hover:bg-blue-700',
-    textColor: 'text-blue-800',
-    accentText: 'text-blue-900',
-    borderColor: 'border-blue-300',
-    buttonBgSecondary: 'bg-purple-500',
-    buttonHoverSecondary: 'hover:bg-purple-600',
-    buttonBgPrimary: 'bg-blue-600',
-    buttonHoverPrimary: 'hover:bg-blue-700',
-    winnerColor: 'text-purple-700',
-    titleColor: 'text-blue-700',
-    headerBg: 'bg-blue-50',
-    subTitleColor: 'text-purple-600',
-    textMain: 'text-blue-700',
-    inputBorder: 'border-blue-300',
-    inputBg: 'bg-blue-50',
-    inputFocusBorder: 'focus:border-blue-500',
-    inputFocusRing: 'focus:ring-blue-200',
-    placeholderColor: 'placeholder-blue-400',
-    messageSuccessBg: 'bg-blue-300',
-    messageSuccessText: 'text-blue-800',
-    messageErrorBg: 'bg-red-300',
-    messageErrorText: 'text-red-800',
+    name: 'Chanel', primaryBg: 'bg-blue-100', secondaryBg: 'bg-blue-200', accentBg: 'bg-blue-600', accentHover: 'hover:bg-blue-700', textColor: 'text-blue-800', accentText: 'text-blue-900', borderColor: 'border-blue-300', buttonBgSecondary: 'bg-purple-500', buttonHoverSecondary: 'hover:bg-purple-600', buttonBgPrimary: 'bg-blue-600', buttonHoverPrimary: 'hover:bg-blue-700', winnerColor: 'text-purple-700', titleColor: 'text-blue-700', headerBg: 'bg-blue-50', subTitleColor: 'text-purple-600', textMain: 'text-blue-700', inputBorder: 'border-blue-300', inputBg: 'bg-blue-50', inputFocusBorder: 'focus:border-blue-500', inputFocusRing: 'focus:ring-blue-200', placeholderColor: 'placeholder-blue-400', messageSuccessBg: 'bg-blue-300', messageSuccessText: 'text-blue-800', messageErrorBg: 'bg-red-300', messageErrorText: 'text-red-800',
   }
 };
 
-const CHARACTER_NAMES_ARRAY = Object.keys(CHARACTER_THEMES); // ['Kazhe', 'Ameen', 'Laja', 'Chanel']
+const CHARACTER_NAMES_ARRAY = Object.keys(CHARACTER_THEMES);
 
 // --- Utility Components ---
-
-/**
- * Custom MessageBox component for displaying non-blocking alerts.
- * Replaces window.alert() and window.confirm().
- */
 function MessageBox({ message, type, onClose }) {
   const messageBoxRef = useRef(null);
-  const theme = useContext(ThemeContext); // Use theme for message box colors
+  const theme = useContext(ThemeContext);
 
   useEffect(() => {
     if (message) {
-      // Set timeout to hide message after 5 seconds
       const timer = setTimeout(() => {
         if (onClose) onClose();
       }, 5000);
@@ -261,11 +162,8 @@ function MessageBox({ message, type, onClose }) {
   );
 }
 
-/**
- * LoadingSpinner component
- */
 function LoadingSpinner({ theme }) {
-  const activeTheme = theme || CHARACTER_THEMES.Kazhe; // Default to Kazhe if theme not provided
+  const activeTheme = theme || CHARACTER_THEMES.Kazhe;
   return (
     <div className={`flex items-center justify-center space-x-2 ${activeTheme.textColor}`}>
       <div className={`w-4 h-4 rounded-full ${activeTheme.accentBg} animate-bounce`}></div>
@@ -277,8 +175,6 @@ function LoadingSpinner({ theme }) {
 }
 
 // --- Game Constants ---
-// Predefined flashcards for the game.
-// These will be used if no custom flashcards are provided by the user.
 const DEFAULT_FLASHCARDS = [
   { id: 'q1', question: 'What is the command to initialize a new Git repository?', answer: 'git init' },
   { id: 'q2', question: 'Which command stages changes for commit?', answer: 'git add' },
@@ -292,15 +188,9 @@ const DEFAULT_FLASHCARDS = [
   { id: 'q10', question: 'Which React Hook manages side effects?', answer: 'useEffect' },
 ];
 
-const MAX_PLAYERS = 4; // Max players in a game
-const SCORE_PER_QUESTION = 10; // Points awarded for a correct answer
+const MAX_PLAYERS = 4;
+const SCORE_PER_QUESTION = 10;
 
-/**
- * Parses raw text input into an array of flashcard objects.
- * Expected format: "Question::Answer" per line.
- * @param {string} text - The raw text input from the user.
- * @returns {Array<Object>} An array of parsed flashcard objects.
- */
 function parseFlashcards(text) {
   const cards = [];
   const lines = text.split('\n');
@@ -310,7 +200,7 @@ function parseFlashcards(text) {
       const parts = trimmedLine.split('::');
       if (parts.length >= 2) {
         const question = parts[0].trim();
-        const answer = parts.slice(1).join('::').trim(); // Join remaining parts in case answer also contains '::'
+        const answer = parts.slice(1).join('::').trim();
         if (question && answer) {
           cards.push({ id: `custom-${index}`, question, answer });
         }
@@ -320,32 +210,26 @@ function parseFlashcards(text) {
   return cards;
 }
 
-
 // --- Lobby Component ---
-/**
- * Lobby component for creating or joining games.
- * Players wait here until the host starts the game.
- */
 function Lobby({ setGameId, currentGameId, setPlayerName }) {
   const { db, userId } = useContext(FirebaseContext);
-  const theme = useContext(ThemeContext); // Get active theme
+  const theme = useContext(ThemeContext);
   const [inputGameId, setInputGameId] = useState('');
   const [localPlayerName, setLocalPlayerName] = useState('');
-  const [game, setGame] = useState(null); // Current game data
+  const [game, setGame] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [message, setMessage] = useState(null);
   const [messageType, setMessageType] = useState('error');
-  const [customFlashcardsInput, setCustomFlashcardsInput] = useState(''); // New state for custom flashcards
-  const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+  const [customFlashcardsInput, setCustomFlashcardsInput] = useState('');
+  // Fixed appId for GitHub Pages deployment
+  const appId = "my-study-game";
 
-  // Load player name from local storage on mount
   useEffect(() => {
     const storedName = localStorage.getItem(`study_game_player_name_${appId}`);
     if (storedName) {
       setLocalPlayerName(storedName);
-      setPlayerName(storedName); // Pass up to App.js
+      setPlayerName(storedName);
     } else {
-      // Generate a default cute name if none exists
       const defaultNames = ["Cutiepie", "Stardust", "Moonbeam", "Sparkle", "Bubblegum", "Dreamy"];
       const generatedName = defaultNames[Math.floor(Math.random() * defaultNames.length)];
       setLocalPlayerName(generatedName);
@@ -353,8 +237,6 @@ function Lobby({ setGameId, currentGameId, setPlayerName }) {
     }
   }, [appId, setPlayerName]);
 
-
-  // Update player name in local storage
   const handlePlayerNameChange = (e) => {
     const name = e.target.value;
     setLocalPlayerName(name);
@@ -362,10 +244,6 @@ function Lobby({ setGameId, currentGameId, setPlayerName }) {
     localStorage.setItem(`study_game_player_name_${appId}`, name);
   };
 
-  /**
-   * Handles creating a new game.
-   * Generates a unique game ID and initializes a new game document in Firestore.
-   */
   const handleCreateGame = async () => {
     if (!localPlayerName.trim()) {
       setMessage('Please enter your player name.');
@@ -373,18 +251,17 @@ function Lobby({ setGameId, currentGameId, setPlayerName }) {
       return;
     }
     setIsLoading(true);
-    const newGameId = Math.random().toString(36).substring(2, 8).toUpperCase(); // Simple random ID
-    // Corrected Firestore path: added 'data' segment for public collection
+    const newGameId = Math.random().toString(36).substring(2, 8).toUpperCase();
     const gameRef = doc(db, 'artifacts', appId, 'public', 'data', 'games', newGameId);
     try {
       await setDoc(gameRef, {
         status: 'lobby',
         players: [{ id: userId, name: localPlayerName, score: 0, lastAnswer: '' }],
         hostId: userId,
-        currentQuestionIndex: -1, // -1 means game not started
-        correctAnsweredBy: null, // No one has answered current question yet
-        questionHistory: [], // To track answered questions and correct answers
-        gameTheme: null, // Initially no theme selected
+        currentQuestionIndex: -1,
+        correctAnsweredBy: null,
+        questionHistory: [],
+        gameTheme: null,
         createdAt: Date.now(),
       });
       setGameId(newGameId);
@@ -399,10 +276,6 @@ function Lobby({ setGameId, currentGameId, setPlayerName }) {
     }
   };
 
-  /**
-   * Handles joining an existing game.
-   * Adds the player to the game's player list in Firestore.
-   */
   const handleJoinGame = async () => {
     if (!localPlayerName.trim()) {
       setMessage('Please enter your player name.');
@@ -415,7 +288,6 @@ function Lobby({ setGameId, currentGameId, setPlayerName }) {
       return;
     }
     setIsLoading(true);
-    // Corrected Firestore path: added 'data' segment for public collection
     const gameRef = doc(db, 'artifacts', appId, 'public', 'data', 'games', inputGameId);
     try {
       await runTransaction(db, async (transaction) => {
@@ -450,12 +322,8 @@ function Lobby({ setGameId, currentGameId, setPlayerName }) {
     }
   };
 
-  /**
-   * Handles selecting a character for the game. This sets the game theme.
-   * Only one character/theme can be selected per game session.
-   */
   const handleSelectCharacter = async (characterName) => {
-    if (!currentGameId || game?.gameTheme) { // Cannot select if no game or theme already set
+    if (!currentGameId || game?.gameTheme) {
       if (game?.gameTheme) {
         setMessage(`Character already selected for this lobby: ${game.gameTheme}`);
       } else {
@@ -466,7 +334,6 @@ function Lobby({ setGameId, currentGameId, setPlayerName }) {
     }
 
     setIsLoading(true);
-    // Corrected Firestore path: added 'data' segment for public collection
     const gameRef = doc(db, 'artifacts', appId, 'public', 'data', 'games', currentGameId);
     try {
       await runTransaction(db, async (transaction) => {
@@ -476,11 +343,10 @@ function Lobby({ setGameId, currentGameId, setPlayerName }) {
         }
         const gameData = gameDoc.data();
 
-        if (gameData.gameTheme) { // Double check inside transaction for race condition
+        if (gameData.gameTheme) {
           throw new Error(`Theme already set to ${gameData.gameTheme}.`);
         }
 
-        // Set the game theme based on the selected character
         transaction.update(gameRef, {
           gameTheme: characterName,
         });
@@ -496,24 +362,21 @@ function Lobby({ setGameId, currentGameId, setPlayerName }) {
     }
   };
 
-  // Listen for game state changes in the current lobby
   useEffect(() => {
     let unsubscribe = () => {};
     if (currentGameId && db) {
-      // Corrected Firestore path: added 'data' segment for public collection
       const gameRef = doc(db, 'artifacts', appId, 'public', 'data', 'games', currentGameId);
       unsubscribe = onSnapshot(gameRef, (docSnap) => {
         if (docSnap.exists()) {
           const data = docSnap.data();
           setGame(data);
-          // If game status changes from lobby, navigate to game view
           if (data.status === 'playing') {
             setMessage('Game started!');
             setMessageType('success');
           }
         } else {
           setGame(null);
-          setGameId(null); // Game doesn't exist anymore
+          setGameId(null);
           setMessage('Game session ended by host or no longer exists.');
           setMessageType('error');
         }
@@ -526,10 +389,6 @@ function Lobby({ setGameId, currentGameId, setPlayerName }) {
     return () => unsubscribe();
   }, [currentGameId, db, appId, setGameId]);
 
-  /**
-   * Host-only function to start the game.
-   * Updates game status and shuffles flashcards.
-   */
   const handleStartGame = async () => {
     if (!game || game.hostId !== userId) {
       setMessage('Only the host can start the game.');
@@ -541,17 +400,16 @@ function Lobby({ setGameId, currentGameId, setPlayerName }) {
       setMessageType('error');
       return;
     }
-    if (!game.gameTheme) { // Require a theme to be selected
+    if (!game.gameTheme) {
       setMessage('Please select a character/theme before starting the game!');
       setMessageType('error');
       return;
     }
 
     setIsLoading(true);
-    // Corrected Firestore path: added 'data' segment for public collection
     const gameRef = doc(db, 'artifacts', appId, 'public', 'data', 'games', currentGameId);
     try {
-      let gameFlashcards = DEFAULT_FLASHCARDS; // Default to built-in cards
+      let gameFlashcards = DEFAULT_FLASHCARDS;
       if (customFlashcardsInput.trim()) {
         const parsedCards = parseFlashcards(customFlashcardsInput);
         if (parsedCards.length > 0) {
@@ -564,7 +422,6 @@ function Lobby({ setGameId, currentGameId, setPlayerName }) {
         }
       }
 
-      // Shuffle flashcards for this game instance
       const shuffledFlashcards = [...gameFlashcards].sort(() => 0.5 - Math.random());
       if (shuffledFlashcards.length === 0) {
         setMessage('No flashcards available to start the game. Please add custom ones or use default.');
@@ -576,9 +433,8 @@ function Lobby({ setGameId, currentGameId, setPlayerName }) {
       await updateDoc(gameRef, {
         status: 'playing',
         currentQuestionIndex: 0,
-        flashcards: shuffledFlashcards, // Store shuffled cards with the game
-        questionHistory: [], // Reset history for new game
-        // Reset player scores for a new game start
+        flashcards: shuffledFlashcards,
+        questionHistory: [],
         players: game.players.map(p => ({ ...p, score: 0, lastAnswer: '' })),
       });
       setMessage('Game is starting!');
@@ -594,9 +450,8 @@ function Lobby({ setGameId, currentGameId, setPlayerName }) {
 
   const isHost = game && game.hostId === userId;
   const selectedGameThemeName = game?.gameTheme;
-  const isCharacterSelectionDisabled = !!selectedGameThemeName; // True if a theme is already picked
+  const isCharacterSelectionDisabled = !!selectedGameThemeName;
 
-  // Determine lobby title based on theme selection
   const lobbyTitle = selectedGameThemeName ? `Welcome ${selectedGameThemeName}!` : '🎀 Game Lobby 🎀';
 
   return (
@@ -742,35 +597,28 @@ function Lobby({ setGameId, currentGameId, setPlayerName }) {
 }
 
 // --- Game Component ---
-/**
- * Main Game component where flashcards are displayed and players answer.
- */
 function Game({ gameId, playerName }) {
   const { db, userId } = useContext(FirebaseContext);
-  const theme = useContext(ThemeContext); // Get active theme
+  const theme = useContext(ThemeContext);
   const [game, setGame] = useState(null);
   const [currentAnswer, setCurrentAnswer] = useState('');
   const [message, setMessage] = useState(null);
   const [messageType, setMessageType] = useState('error');
-  const [isAnswering, setIsAnswering] = useState(false); // To prevent multiple submissions
-  const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+  const [isAnswering, setIsAnswering] = useState(false);
+  const appId = "my-study-game"; // Fixed appId for GitHub Pages deployment
 
-  // Listen for real-time updates to the game state
   useEffect(() => {
     let unsubscribe = () => {};
     if (gameId && db) {
-      // Corrected Firestore path: added 'data' segment for public collection
       const gameRef = doc(db, 'artifacts', appId, 'public', 'data', 'games', gameId);
       unsubscribe = onSnapshot(gameRef, (docSnap) => {
         if (docSnap.exists()) {
           const data = docSnap.data();
           setGame(data);
-          // If game finished, navigate to end screen
           if (data.status === 'finished') {
             setMessage('Game Over! See results.');
             setMessageType('success');
           }
-          // Reset answer input and answering state for new questions
           if (data.currentQuestionIndex !== (game?.currentQuestionIndex || -1)) {
             setCurrentAnswer('');
             setIsAnswering(false);
@@ -778,8 +626,6 @@ function Game({ gameId, playerName }) {
         } else {
           setMessage('Game session ended or no longer exists.');
           setMessageType('error');
-          // Navigate back to lobby or end screen if game disappears
-          // For now, let App.js handle setting gameId to null
         }
       }, (error) => {
         console.error("Error listening to game state:", error);
@@ -788,17 +634,12 @@ function Game({ gameId, playerName }) {
       });
     }
     return () => unsubscribe();
-  }, [gameId, db, appId, game?.currentQuestionIndex]); // Dependency on game?.currentQuestionIndex to reset answer field
+  }, [gameId, db, appId, game?.currentQuestionIndex]);
 
-  // Current question being displayed
   const currentQuestion = game?.flashcards?.[game.currentQuestionIndex];
   const playerList = game?.players || [];
   const currentPlayer = playerList.find(p => p.id === userId);
 
-  /**
-   * Handles player submitting an answer.
-   * Uses a Firestore transaction to ensure atomic updates for first correct answer.
-   */
   const handleSubmitAnswer = async (e) => {
     e.preventDefault();
     if (!currentQuestion || !currentAnswer.trim() || isAnswering || game.correctAnsweredBy) {
@@ -812,8 +653,7 @@ function Game({ gameId, playerName }) {
       return;
     }
 
-    setIsAnswering(true); // Disable further submissions
-    // Corrected Firestore path: added 'data' segment for public collection
+    setIsAnswering(true);
     const gameRef = doc(db, 'artifacts', appId, 'public', 'data', 'games', gameId);
 
     try {
@@ -824,7 +664,6 @@ function Game({ gameId, playerName }) {
         }
         const gameData = gameDoc.data();
 
-        // Check if question was already answered correctly by someone else
         if (gameData.correctAnsweredBy) {
           throw new Error('This question has already been answered correctly by another player.');
         }
@@ -833,15 +672,13 @@ function Game({ gameId, playerName }) {
         const normalizedCorrectAnswer = currentQuestion.answer.trim().toLowerCase();
 
         if (normalizedSubmittedAnswer === normalizedCorrectAnswer) {
-          // Find player and update their score
           const updatedPlayers = gameData.players.map(p =>
             p.id === userId ? { ...p, score: p.score + SCORE_PER_QUESTION, lastAnswer: currentAnswer } : p
           );
 
-          // Update game state: next question, update scores, mark as answered
           transaction.update(gameRef, {
             players: updatedPlayers,
-            correctAnsweredBy: userId, // Mark who got it right
+            correctAnsweredBy: userId,
             questionHistory: arrayUnion({
               questionId: currentQuestion.id,
               correctAnswer: currentQuestion.answer,
@@ -853,7 +690,6 @@ function Game({ gameId, playerName }) {
           setMessage('Correct! 💖');
           setMessageType('success');
         } else {
-          // Only update last answer if incorrect, no score change
           const updatedPlayers = gameData.players.map(p =>
             p.id === userId ? { ...p, lastAnswer: currentAnswer } : p
           );
@@ -867,35 +703,30 @@ function Game({ gameId, playerName }) {
       setMessage(`Error: ${e.message}`);
       setMessageType('error');
     } finally {
-      setIsAnswering(false); // Re-enable input after attempt
+      setIsAnswering(false);
     }
   };
 
-  /**
-   * Function to move to the next question (now callable by any player).
-   */
   const handleNextQuestion = async () => {
-    if (!game || !game.correctAnsweredBy) { // Only allow next question if one has been answered
+    if (!game || !game.correctAnsweredBy) {
       setMessage('Please answer the current question correctly first!');
       setMessageType('error');
       return;
     }
 
-    setIsAnswering(true); // Prevent new answers during transition
-    // Corrected Firestore path: added 'data' segment for public collection
+    setIsAnswering(true);
     const gameRef = doc(db, 'artifacts', appId, 'public', 'data', 'games', gameId);
     try {
       const nextIndex = game.currentQuestionIndex + 1;
       if (nextIndex < game.flashcards.length) {
         await updateDoc(gameRef, {
           currentQuestionIndex: nextIndex,
-          correctAnsweredBy: null, // Reset for the new question
-          players: playerList.map(p => ({ ...p, lastAnswer: '' })) // Clear last answers for new question
+          correctAnsweredBy: null,
+          players: playerList.map(p => ({ ...p, lastAnswer: '' }))
         });
         setMessage('Next question!');
         setMessageType('success');
       } else {
-        // Game over
         await updateDoc(gameRef, {
           status: 'finished',
           correctAnsweredBy: null,
@@ -916,13 +747,11 @@ function Game({ gameId, playerName }) {
     return <LoadingSpinner theme={theme} />;
   }
 
-  // Determine game stage
   const isLobby = game.status === 'lobby';
   const isPlaying = game.status === 'playing';
   const isFinished = game.status === 'finished';
 
   if (isLobby) {
-    // This case should ideally not happen if App.js manages state transitions correctly
     return <p className={`${theme.textColor}`}>Waiting for game to start...</p>;
   }
 
@@ -987,7 +816,6 @@ function Game({ gameId, playerName }) {
         </ul>
       </div>
 
-      {/* "Next Question" button is now accessible to all players once a correct answer is given */}
       <button
         onClick={handleNextQuestion}
         disabled={!game.correctAnsweredBy && game.currentQuestionIndex < game.flashcards.length -1}
@@ -1001,11 +829,8 @@ function Game({ gameId, playerName }) {
 }
 
 // --- EndScreen Component ---
-/**
- * Displays the final results of the game.
- */
 function EndScreen({ game }) {
-  const theme = useContext(ThemeContext); // Get active theme
+  const theme = useContext(ThemeContext);
   const sortedPlayers = [...game.players].sort((a, b) => b.score - a.score);
   const winner = sortedPlayers[0];
 
@@ -1035,9 +860,8 @@ function EndScreen({ game }) {
         </p>
       )}
 
-      {/* Button to restart or go back to lobby */}
       <button
-        onClick={() => window.location.reload()} // Simple reload to go back to lobby
+        onClick={() => window.location.reload()}
         className={`${theme.buttonBgPrimary} ${theme.buttonHoverPrimary} text-white font-bold py-3 px-6 rounded-full shadow-lg transition-all duration-300 transform hover:scale-105 text-lg`}
       >
         Play Again? 💖
@@ -1046,41 +870,32 @@ function EndScreen({ game }) {
   );
 }
 
-
-// --- Main GameWrapper Component (formerly App) ---
-/**
- * The main component of the study game application.
- * Manages the main game flow (Lobby, Game, End Screen) based on gameId and game status.
- */
+// --- Main GameWrapper Component ---
 function GameWrapper() {
   const [currentGameId, setCurrentGameId] = useState(null);
-  const [gameStatus, setGameStatus] = useState('lobby'); // 'lobby', 'playing', 'finished'
+  const [gameStatus, setGameStatus] = useState('lobby');
   const [playerName, setPlayerName] = useState('');
-  const [activeGameTheme, setActiveGameTheme] = useState(CHARACTER_THEMES.Kazhe); // Default theme
-  const { db, userId } = useContext(FirebaseContext); // Now correctly accessing context
-  const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+  const [activeGameTheme, setActiveGameTheme] = useState(CHARACTER_THEMES.Kazhe);
+  const { db, userId } = useContext(FirebaseContext);
+  const appId = "my-study-game"; // Fixed appId for GitHub Pages deployment
 
-  // Listen for changes to the game document
   useEffect(() => {
     let unsubscribe = () => {};
     if (currentGameId && db) {
-      // Corrected Firestore path: added 'data' segment for public collection
       const gameRef = doc(db, 'artifacts', appId, 'public', 'data', 'games', currentGameId);
       unsubscribe = onSnapshot(gameRef, (docSnap) => {
         if (docSnap.exists()) {
           const gameData = docSnap.data();
           setGameStatus(gameData.status);
-          // Update the active theme if it's set in the game data
           if (gameData.gameTheme && CHARACTER_THEMES[gameData.gameTheme]) {
             setActiveGameTheme(CHARACTER_THEMES[gameData.gameTheme]);
           } else {
-            // If theme is not set, revert to default or handle as needed
             setActiveGameTheme(CHARACTER_THEMES.Kazhe);
           }
         } else {
-          setCurrentGameId(null); // Game doesn't exist anymore
-          setGameStatus('lobby'); // Go back to lobby
-          setActiveGameTheme(CHARACTER_THEMES.Kazhe); // Reset theme
+          setCurrentGameId(null);
+          setGameStatus('lobby');
+          setActiveGameTheme(CHARACTER_THEMES.Kazhe);
         }
       }, (error) => {
         console.error("Error listening to game in App.js:", error);
@@ -1092,11 +907,10 @@ function GameWrapper() {
     return () => unsubscribe();
   }, [currentGameId, db, appId]);
 
-  // Render the appropriate component based on game status
   const renderGameComponent = () => {
     switch (gameStatus) {
       case 'playing':
-      case 'finished': // Both playing and finished use Game to fetch current state
+      case 'finished':
         return <Game gameId={currentGameId} playerName={playerName} />;
       case 'lobby':
       default:
@@ -1126,7 +940,6 @@ function GameWrapper() {
             animation: bounce 1s infinite;
         }
       `}</style>
-      {/* Provide the active theme to all children components */}
       <ThemeContext.Provider value={activeGameTheme}>
         {renderGameComponent()}
       </ThemeContext.Provider>
@@ -1134,11 +947,7 @@ function GameWrapper() {
   );
 }
 
-
 // --- Root App Component ---
-/**
- * The root component that sets up Firebase Provider and then renders the main GameWrapper.
- */
 function App() {
   return (
     <FirebaseProvider>
@@ -1147,5 +956,4 @@ function App() {
   );
 }
 
-// Export the main App component as default for Canvas
 export default App;
