@@ -10,49 +10,49 @@ import {
 const FirebaseContext = createContext(null);
 
 /**
-// Import the functions you need from the SDKs you need
-import { initializeApp } from "firebase/app";
-import { getAnalytics } from "firebase/analytics";
-// TODO: Add SDKs for Firebase products that you want to use
-// https://firebase.google.com/docs/web/setup#available-libraries
-
-// Your web app's Firebase configuration
-// For Firebase JS SDK v7.20.0 and later, measurementId is optional
-const firebaseConfig = {
-  apiKey: "AIzaSyCK7wNoSjOCR1wajg0fuym4__3oOuSPS-Q",
-  authDomain: "study-game-8522a.firebaseapp.com",
-  projectId: "study-game-8522a",
-  storageBucket: "study-game-8522a.firebasestorage.app",
-  messagingSenderId: "917966145384",
-  appId: "1:917966145384:web:06f7ec00f71b20f75638dd",
-  measurementId: "G-X4GQB95DYH"
-};
-
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
-const analytics = getAnalytics(app);
+ * FirebaseProvider component
+ * Initializes Firebase, authenticates the user, and provides the Firebase instances
+ * and user ID to its children via context.
+ *
+ * IMPORTANT: For this game to have real-time multiplayer functionality on GitHub Pages,
+ * you MUST replace the placeholder firebaseConfig object below with your actual Firebase project's configuration.
+ *
+ * How to get your Firebase Config:
+ * 1. Go to your Firebase Project Console (console.firebase.google.com).
+ * 2. Click on "Project settings" (gear icon next to "Project overview").
+ * 3. In the "Your apps" section, click the web icon (</>) to add a new web app.
+ * 4. Follow the steps, and at the end, Firebase will provide you with a 'firebaseConfig' object.
+ * 5. Copy that entire object and paste it below, replacing the existing firebaseConfig.
+ */
 function FirebaseProvider({ children }) {
   const [db, setDb] = useState(null);
   const [auth, setAuth] = useState(null);
   const [userId, setUserId] = useState(null);
   const [isAuthReady, setIsAuthReady] = useState(false);
 
-  // REPLACE THIS ENTIRE firebaseConfig OBJECT WITH YOUR ACTUAL FIREBASE CONFIG
+  // YOUR ACTUAL FIREBASE CONFIG HAS BEEN INSERTED HERE
   const firebaseConfig = {
-    apiKey: "YOUR_API_KEY", // Example: "AIzaSyC0s-..."
-    authDomain: "YOUR_PROJECT_ID.firebaseapp.com", // Example: "my-study-game-123.firebaseapp.com"
-    projectId: "YOUR_PROJECT_ID", // Example: "my-study-game-123"
-    storageBucket: "YOUR_PROJECT_ID.appspot.com", // Example: "my-study-game-123.appspot.com"
-    messagingSenderId: "YOUR_MESSAGING_SENDER_ID", // Example: "1234567890"
-    appId: "YOUR_APP_ID" // Example: "1:234567890:web:abcdef123456"
+    apiKey: "AIzaSyCK7wNoSjOCR1wajg0fuym4__3oOuSPS-Q",
+    authDomain: "study-game-8522a.firebaseapp.com",
+    projectId: "study-game-8522a",
+    storageBucket: "study-game-8522a.firebasestorage.app",
+    messagingSenderId: "917966145384",
+    appId: "1:917966145384:web:06f7ec00f71b20f75638dd",
+    measurementId: "G-X4GQB95DYH"
   };
+
+  // Determine the appId dynamically from the Firebase project ID for consistency
+  // This will be used in Firestore paths like 'artifacts/{appId}/public/data/games/{gameId}'
+  const effectiveAppId = (firebaseConfig.projectId && firebaseConfig.projectId !== "YOUR_PROJECT_ID")
+    ? firebaseConfig.projectId
+    : "default-app-id"; // Fallback for Canvas or if config is not set
 
   useEffect(() => {
     // Check if firebaseConfig is still the placeholder. If so, warn and do not initialize Firebase.
+    // This check now primarily ensures the user has replaced the dummy config.
     if (!firebaseConfig.projectId || firebaseConfig.projectId === "YOUR_PROJECT_ID") {
       console.error("Firebase configuration is missing or incomplete. Multiplayer features will NOT work.");
-      // Keep isAuthReady false to show a clear message to the user.
-      setIsAuthReady(false);
+      setIsAuthReady(false); // Keep isAuthReady false to show a clear message to the user.
       return;
     }
 
@@ -80,9 +80,7 @@ function FirebaseProvider({ children }) {
       return () => unsubscribe();
     } catch (error) {
       console.error("Failed to initialize Firebase:", error);
-      // Set an error message if initialization fails
       setIsAuthReady(false);
-      // Optionally, set a visible message to the user if firebase init fails entirely
     }
   }, [JSON.stringify(firebaseConfig)]); // Re-run effect if the config somehow changes
 
@@ -92,7 +90,7 @@ function FirebaseProvider({ children }) {
       <div className="flex items-center justify-center min-h-screen bg-pink-100">
         <p className="text-pink-700 text-lg text-center p-4">
           {(!firebaseConfig.projectId || firebaseConfig.projectId === "YOUR_PROJECT_ID")
-            ? "🛑 Multiplayer features offline: Please update Firebase config in App.js. Follow setup instructions!"
+            ? "🛑 Multiplayer features offline: Please update Firebase config in App.js (FirebaseProvider component)."
             : "🌸 Initializing Game... 🎀"
           }
         </p>
@@ -101,7 +99,7 @@ function FirebaseProvider({ children }) {
   }
 
   return (
-    <FirebaseContext.Provider value={{ db, auth, userId }}>
+    <FirebaseContext.Provider value={{ db, auth, userId, effectiveAppId }}>
       {children}
     </FirebaseContext.Provider>
   );
@@ -212,7 +210,7 @@ function parseFlashcards(text) {
 
 // --- Lobby Component ---
 function Lobby({ setGameId, currentGameId, setPlayerName }) {
-  const { db, userId } = useContext(FirebaseContext);
+  const { db, userId, effectiveAppId } = useContext(FirebaseContext);
   const theme = useContext(ThemeContext);
   const [inputGameId, setInputGameId] = useState('');
   const [localPlayerName, setLocalPlayerName] = useState('');
@@ -221,8 +219,8 @@ function Lobby({ setGameId, currentGameId, setPlayerName }) {
   const [message, setMessage] = useState(null);
   const [messageType, setMessageType] = useState('error');
   const [customFlashcardsInput, setCustomFlashcardsInput] = useState('');
-  // Fixed appId for GitHub Pages deployment
-  const appId = "my-study-game";
+  // Use effectiveAppId from FirebaseContext
+  const appId = effectiveAppId;
 
   useEffect(() => {
     const storedName = localStorage.getItem(`study_game_player_name_${appId}`);
@@ -452,7 +450,7 @@ function Lobby({ setGameId, currentGameId, setPlayerName }) {
   const selectedGameThemeName = game?.gameTheme;
   const isCharacterSelectionDisabled = !!selectedGameThemeName;
 
-  const lobbyTitle = selectedGameThemeName ? `Welcome ${selectedGameThemeName}!` : '🎀 Game Lobby 🎀';
+  const lobbyTitle = selectedGameThemeName ? `Welcome ${selectedGameThemeName}!` : '🎀 Game Lobby �';
 
   return (
     <div className={`flex flex-col items-center justify-center p-8 ${theme.primaryBg} rounded-3xl shadow-lg border-4 border-dashed ${theme.borderColor} relative overflow-hidden h-full w-full max-w-lg mx-auto`}>
@@ -598,14 +596,14 @@ function Lobby({ setGameId, currentGameId, setPlayerName }) {
 
 // --- Game Component ---
 function Game({ gameId, playerName }) {
-  const { db, userId } = useContext(FirebaseContext);
+  const { db, userId, effectiveAppId } = useContext(FirebaseContext);
   const theme = useContext(ThemeContext);
   const [game, setGame] = useState(null);
   const [currentAnswer, setCurrentAnswer] = useState('');
   const [message, setMessage] = useState(null);
   const [messageType, setMessageType] = useState('error');
   const [isAnswering, setIsAnswering] = useState(false);
-  const appId = "my-study-game"; // Fixed appId for GitHub Pages deployment
+  const appId = effectiveAppId; // Use effectiveAppId from FirebaseContext
 
   useEffect(() => {
     let unsubscribe = () => {};
@@ -876,13 +874,12 @@ function GameWrapper() {
   const [gameStatus, setGameStatus] = useState('lobby');
   const [playerName, setPlayerName] = useState('');
   const [activeGameTheme, setActiveGameTheme] = useState(CHARACTER_THEMES.Kazhe);
-  const { db, userId } = useContext(FirebaseContext);
-  const appId = "my-study-game"; // Fixed appId for GitHub Pages deployment
+  const { db, userId, effectiveAppId } = useContext(FirebaseContext); // Get effectiveAppId from context
 
   useEffect(() => {
     let unsubscribe = () => {};
     if (currentGameId && db) {
-      const gameRef = doc(db, 'artifacts', appId, 'public', 'data', 'games', currentGameId);
+      const gameRef = doc(db, 'artifacts', effectiveAppId, 'public', 'data', 'games', currentGameId); // Use effectiveAppId
       unsubscribe = onSnapshot(gameRef, (docSnap) => {
         if (docSnap.exists()) {
           const gameData = docSnap.data();
@@ -905,7 +902,7 @@ function GameWrapper() {
       });
     }
     return () => unsubscribe();
-  }, [currentGameId, db, appId]);
+  }, [currentGameId, db, effectiveAppId]); // Depend on effectiveAppId
 
   const renderGameComponent = () => {
     switch (gameStatus) {
@@ -957,3 +954,4 @@ function App() {
 }
 
 export default App;
+�
