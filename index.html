@@ -588,7 +588,7 @@ function Lobby({ setGameId, currentGameId, setPlayerName }) {
             disabled={isLoading}
             className={`w-full ${theme.buttonBgPrimary} ${theme.buttonHoverPrimary} text-white font-bold py-3 px-6 rounded-full shadow-lg transition-all duration-300 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed text-lg`}
           >
-            {isLoading ? <LoadingSpinner theme={theme} /> : 'Create New Game �'}
+            {isLoading ? <LoadingSpinner theme={theme} /> : 'Create New Game 💖'}
           </button>
           <div className="relative flex py-5 items-center">
             <div className={`flex-grow border-t ${theme.borderColor}`}></div>
@@ -828,6 +828,7 @@ function Game({ gameId, playerName }) {
               <span className="flex items-center">
                 {player.name}
                 {player.id === userId && <span className={`ml-2 text-xs font-bold ${theme.buttonBgPrimary.replace('bg-', 'text-')}`}> (You)</span>}
+                {player.id === game.hostId && <span className="ml-2 text-xs font-bold text-purple-600"> (Host)</span>}
               </span>
               <span className={`${theme.accentText} font-bold`}>{player.score} points</span>
               {player.lastAnswer && <span className={`ml-2 text-xs ${theme.textColor} opacity-70 italic`}> - {player.lastAnswer}</span>}
@@ -976,4 +977,3 @@ function App() {
 }
 
 export default App;
-�
