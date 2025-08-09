@@ -10,12 +10,27 @@ import {
 const FirebaseContext = createContext(null);
 
 /**
+ * FirebaseProvider component
+ * Initializes Firebase, authenticates the user, and provides the Firebase instances
+ * and user ID to its children via context.
+ *
+ * IMPORTANT: For this game to have real-time multiplayer functionality on GitHub Pages,
+ * you MUST replace the placeholder firebaseConfig object below with your actual Firebase project's configuration.
+ *
+ * How to get your Firebase Config:
+ * 1. Go to your Firebase Project Console (console.firebase.google.com).
+ * 2. Click on "Project settings" (gear icon next to "Project overview").
+ * 3. In the "Your apps" section, click the web icon (</>) to add a new web app.
+ * 4. Follow the steps, and at the end, Firebase will provide you with a 'firebaseConfig' object.
+ * 5. Copy that entire object and paste it below, replacing the existing firebaseConfig.
  */
 function FirebaseProvider({ children }) {
   const [db, setDb] = useState(null);
   const [auth, setAuth] = useState(null);
   const [userId, setUserId] = useState(null);
   const [isAuthReady, setIsAuthReady] = useState(false);
+  const [firebaseProviderMessage, setFirebaseProviderMessage] = useState(null); // New state for provider-level messages
+  const [firebaseProviderMessageType, setFirebaseProviderMessageType] = useState('error'); // Type for provider-level messages
 
   // YOUR ACTUAL FIREBASE CONFIG HAS BEEN INSERTED HERE
   const firebaseConfig = {
@@ -35,10 +50,15 @@ function FirebaseProvider({ children }) {
     : "default-app-id"; // Fallback for Canvas or if config is not set
 
   useEffect(() => {
+    // Log the config being used for debugging
+    console.log("Attempting Firebase initialization with config:", firebaseConfig);
+
     // Check if firebaseConfig is still the placeholder. If so, warn and do not initialize Firebase.
     // This check now primarily ensures the user has replaced the dummy config.
     if (!firebaseConfig.projectId || firebaseConfig.projectId === "YOUR_PROJECT_ID") {
       console.error("Firebase configuration is missing or incomplete. Multiplayer features will NOT work.");
+      setFirebaseProviderMessage("🛑 Multiplayer features offline: Please update Firebase config in App.js (FirebaseProvider component).");
+      setFirebaseProviderMessageType('error');
       setIsAuthReady(false); // Keep isAuthReady false to show a clear message to the user.
       return;
     }
@@ -55,18 +75,33 @@ function FirebaseProvider({ children }) {
       // Sign in anonymously and listen for auth state changes
       const unsubscribe = onAuthStateChanged(firebaseAuth, async (user) => {
         if (user) {
+          console.log("Firebase Auth state changed: User is signed in with UID:", user.uid);
           setUserId(user.uid);
         } else {
-          // If no user, try to sign in anonymously
-          await signInAnonymously(firebaseAuth);
+          console.log("Firebase Auth state changed: No user, attempting anonymous sign-in.");
+          // Attempt anonymous sign-in
+          try {
+            await signInAnonymously(firebaseAuth);
+            console.log("Anonymous sign-in successful.");
+          } catch (anonError) {
+            console.error("Firebase Anonymous Auth Error during sign-in:", anonError);
+            setFirebaseProviderMessage(`Firebase Authentication failed: ${anonError.message}. Please check Firebase Console Authentication settings.`);
+            setFirebaseProviderMessageType('error');
+            setIsAuthReady(false); // Authentication failed, cannot proceed.
+            return; // Exit here if anonymous sign-in fails
+          }
         }
-        setIsAuthReady(true); // Auth state check complete
+        setIsAuthReady(true); // Auth state check complete and user (anonymous or otherwise) is obtained
+        console.log("Firebase Auth is ready.");
+        setFirebaseProviderMessage(null); // Clear any previous messages if successful
       });
 
       // Cleanup subscription on unmount
       return () => unsubscribe();
     } catch (error) {
-      console.error("Failed to initialize Firebase:", error);
+      console.error("Failed to initialize Firebase app or get services:", error);
+      setFirebaseProviderMessage(`Firebase initialization failed: ${error.message}. Please verify your firebaseConfig and network.`);
+      setFirebaseProviderMessageType('error');
       setIsAuthReady(false);
     }
   }, [JSON.stringify(firebaseConfig)]); // Re-run effect if the config somehow changes
@@ -74,13 +109,13 @@ function FirebaseProvider({ children }) {
   // Display a loading state or an error if Firebase isn't ready or configured
   if (!isAuthReady) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-pink-100">
-        <p className="text-pink-700 text-lg text-center p-4">
-          {(!firebaseConfig.projectId || firebaseConfig.projectId === "YOUR_PROJECT_ID")
-            ? "🛑 Multiplayer features offline: Please update Firebase config in App.js (FirebaseProvider component)."
-            : "🌸 Initializing Game... 🎀"
-          }
-        </p>
+      <div className="flex flex-col items-center justify-center min-h-screen bg-pink-100 p-4 text-center">
+        {firebaseProviderMessage ? (
+            <p className="text-red-700 text-lg font-bold mb-4">{firebaseProviderMessage}</p>
+        ) : (
+            <p className="text-pink-700 text-lg">🌸 Initializing Game... 🎀</p>
+        )}
+        <LoadingSpinner theme={CHARACTER_THEMES.Kazhe} />
       </div>
     );
   }
@@ -437,7 +472,7 @@ function Lobby({ setGameId, currentGameId, setPlayerName }) {
   const selectedGameThemeName = game?.gameTheme;
   const isCharacterSelectionDisabled = !!selectedGameThemeName;
 
-  const lobbyTitle = selectedGameThemeName ? `Welcome ${selectedGameThemeName}!` : '🎀 Game Lobby �';
+  const lobbyTitle = selectedGameThemeName ? `Welcome ${selectedGameThemeName}!` : '🎀 Game Lobby 🎀';
 
   return (
     <div className={`flex flex-col items-center justify-center p-8 ${theme.primaryBg} rounded-3xl shadow-lg border-4 border-dashed ${theme.borderColor} relative overflow-hidden h-full w-full max-w-lg mx-auto`}>
@@ -553,7 +588,7 @@ function Lobby({ setGameId, currentGameId, setPlayerName }) {
             disabled={isLoading}
             className={`w-full ${theme.buttonBgPrimary} ${theme.buttonHoverPrimary} text-white font-bold py-3 px-6 rounded-full shadow-lg transition-all duration-300 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed text-lg`}
           >
-            {isLoading ? <LoadingSpinner theme={theme} /> : 'Create New Game 💖'}
+            {isLoading ? <LoadingSpinner theme={theme} /> : 'Create New Game �'}
           </button>
           <div className="relative flex py-5 items-center">
             <div className={`flex-grow border-t ${theme.borderColor}`}></div>
