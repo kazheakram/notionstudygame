@@ -1,6 +1,6 @@
 import React, { useState, useEffect, createContext, useContext, useRef } from 'react';
 import { initializeApp } from 'firebase/app';
-import { getAuth, signInAnonymously, onAuthStateChanged } from 'firebase/auth'; // Removed signInWithCustomToken
+import { getAuth, signInAnonymously, onAuthStateChanged } from 'firebase/auth';
 import {
   getFirestore, doc, setDoc, updateDoc, onSnapshot, runTransaction, arrayUnion
 } from 'firebase/firestore';
@@ -10,19 +10,6 @@ import {
 const FirebaseContext = createContext(null);
 
 /**
- * FirebaseProvider component
- * Initializes Firebase, authenticates the user, and provides the Firebase instances
- * and user ID to its children via context.
- *
- * IMPORTANT: For this game to have real-time multiplayer functionality on GitHub Pages,
- * you MUST replace the placeholder firebaseConfig object below with your actual Firebase project's configuration.
- *
- * How to get your Firebase Config:
- * 1. Go to your Firebase Project Console (console.firebase.google.com).
- * 2. Click on "Project settings" (gear icon next to "Project overview").
- * 3. In the "Your apps" section, click the web icon (</>) to add a new web app.
- * 4. Follow the steps, and at the end, Firebase will provide you with a 'firebaseConfig' object.
- * 5. Copy that entire object and paste it below, replacing the existing firebaseConfig.
  */
 function FirebaseProvider({ children }) {
   const [db, setDb] = useState(null);
@@ -37,8 +24,8 @@ function FirebaseProvider({ children }) {
     projectId: "study-game-8522a",
     storageBucket: "study-game-8522a.firebasestorage.app",
     messagingSenderId: "917966145384",
-    appId: "1:917966145384:web:06f7ec00f71b20f75638dd",
-    measurementId: "G-X4GQB95DYH"
+    appId: "1:917966145384:web:6765cb4b1f55e8415638dd",
+    measurementId: "G-V43C68JVJG"
   };
 
   // Determine the appId dynamically from the Firebase project ID for consistency
